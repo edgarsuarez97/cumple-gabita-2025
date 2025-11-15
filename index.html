@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-R">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contador de Cumpleaños Hello Kitty</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Carga de Tone.js para el sonido -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
+    
+    <!-- Configuración de Tailwind y Fuentes -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        // Usaremos una fuente linda como 'Pacifico' para el título
+                        display: ['Pacifico', 'cursive'],
+                    },
+                    colors: {
+                        'hk-pink-light': '#FCEEF5',
+                        'hk-pink': '#FFC0CB',
+                        'hk-red': '#E6007E', // Un rosa fuerte/rojo de HK
+                        'hk-dark': '#333333',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Carga de la fuente Pacifico desde Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Pacifico&display=swap" rel="stylesheet">
+    
+    <!-- Estilos CSS personalizados -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #FCEEF5 0%, #FFC0CB 100%);
+            /* Imagen de fondo sutil de Hello Kitty (SVG) */
+            background-image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 100 100"><text y="50" x="5" font-size="100" fill="rgba(255,255,255,0.3)">🎀</text></svg>';
+            background-repeat: repeat;
+            background-size: 120px;
+        }
+
+        /* Lienzo de confeti */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            /* Asegura que el confeti esté encima de todo */
+            z-index: 9999;
+            /* Permite hacer clic "a través" del lienzo */
+            pointer-events: none;
+            display: none; /* Oculto hasta que el contador llegue a 0 */
+        }
+
+        /* Contenedor del contador */
+        .countdown-container {
+            /* Sombra suave para un look 'kawaii' */
+            box-shadow: 0 10px 25px rgba(230, 0, 126, 0.1);
+        }
+
+        /* Cada caja de número (días, horas, etc.) */
+        .time-box {
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 2px solid white;
+            border-radius: 1.5rem; /* Esquinas muy redondeadas */
+        }
+        
+        .time-box span:first-child {
+            color: #8949cc; /* Números en rosa fuerte */
+        }
+        
+        .time-box span:last-child {
+            color: #333333; /* Etiquetas en color oscuro */
+        }
+        
+        /* Mensaje de ¡Feliz Cumpleaños! */
+        #birthday-message {
+            /* Fuente de "display" (Pacifico) definida en Tailwind */
+            font-family: 'Pacifico', cursive;
+            text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.7);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Lienzo para el confeti -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Contenedor principal -->
+    <main id="countdown-wrapper" class="w-full max-w-2xl mx-auto">
+        
+        <!-- Tarjeta del contador -->
+        <div class="countdown-container bg-white bg-opacity-70 p-6 sm:p-10 rounded-3xl backdrop-blur-sm border-4 border-white">
+            
+            <!-- Icono de Lazo de Hello Kitty (SVG) -->
+            <div class="flex justify-center mb-4">
+                <svg class="w-16 h-16 text-hk-red" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 9C12 9 13 5.00001 16 5.00001C19 5.00001 21 7.00001 21 10C21 13 19 15 16 15C13 15 12 12 12 12V9Z" />
+                    <path d="M12 9C12 9 11 5.00001 8 5.00001C5 5.00001 3 7.00001 3 10C3 13 5 15 8 15C11 15 12 12 12 12V9Z" />
+                    <circle cx="12" cy="10" r="3" fill="white" stroke="#E6007E" stroke-width="2" />
+                </svg>
+            </div>
+            
+            <h1 class="font-display text-4xl sm:text-5xl text-center text-hk-red mb-6">¡El cumpleaños se acerca!</h1>
+            
+            <!-- Bloque del contador -->
+            <div id="countdown" class="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 text-center">
+                <!-- Días -->
+                <div class="time-box p-4 sm:p-6">
+                    <span id="days" class="block text-4xl sm:text-6xl font-bold">00</span>
+                    <span class="block text-sm sm:text-base uppercase tracking-wider mt-1">Días</span>
+                </div>
+                <!-- Horas -->
+                <div class="time-box p-4 sm:p-6">
+                    <span id="hours" class="block text-4xl sm:text-6xl font-bold">00</span>
+                    <span class="block text-sm sm:text-base uppercase tracking-wider mt-1">Horas</span>
+                </div>
+                <!-- Minutos -->
+                <div class="time-box p-4 sm:p-6">
+                    <span id="minutes" class="block text-4xl sm:text-6xl font-bold">00</span>
+                    <span class="block text-sm sm:text-base uppercase tracking-wider mt-1">Minutos</span>
+                </div>
+                <!-- Segundos -->
+                <div class="time-box p-4 sm:p-6">
+                    <span id="seconds" class="block text-4xl sm:text-6xl font-bold">00</span>
+                    <span class="block text-sm sm:text-base uppercase tracking-wider mt-1">Segundos</span>
+                </div>
+            </div>
+
+        </div>
+    </main>
+    
+    <!-- Mensaje de ¡Feliz Cumpleaños! (Oculto) -->
+    <div id="birthday-message" class="hidden absolute inset-0 flex items-center justify-center text-7xl sm:text-9xl text-hk-red text-center z-50 p-4">
+        ¡Feliz Cumpleaños!
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- 1. LÓGICA DEL CONTADOR ---
+
+            // Definir la fecha objetivo: 15 de Noviembre de 2025, 00:00:00, Zona Horaria -4GMT
+            // El formato ISO 8601 "YYYY-MM-DDTHH:mm:ss-04:00" es la forma más robusta de incluir la zona horaria.
+            const targetDate = new Date("2025-11-15T00:00:00-04:00").getTime();
+
+            // Elementos del DOM para actualizar
+            const daysEl = document.getElementById('days');
+            const hoursEl = document.getElementById('hours');
+            const minutesEl = document.getElementById('minutes');
+            const secondsEl = document.getElementById('seconds');
+            const countdownWrapper = document.getElementById('countdown-wrapper');
+            const birthdayMessage = document.getElementById('birthday-message');
+            
+            // Función para formatear el número (añadir un 0 delante si es menor de 10)
+            const formatTime = (time) => (time < 10 ? `0${time}` : time);
+
+            // Iniciar el intervalo del contador
+            const countdownInterval = setInterval(() => {
+                // Obtener la fecha y hora actual
+                const now = new Date().getTime();
+                
+                // Calcular la distancia entre ahora y la fecha objetivo
+                const distance = targetDate - now;
+
+                // Si el contador ha terminado
+                if (distance < 0) {
+                    clearInterval(countdownInterval);
+                    // Ocultar el contador y mostrar el mensaje de cumpleaños
+                    if (countdownWrapper) countdownWrapper.classList.add('hidden');
+                    if (birthdayMessage) birthdayMessage.classList.remove('hidden');
+                    
+                    // Iniciar la celebración
+                    playCelebrationSound();
+                    startConfetti();
+                    return; // Salir de la función
+                }
+
+                // Cálculos de tiempo
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                // Actualizar el HTML
+                if (daysEl) daysEl.innerText = formatTime(days);
+                if (hoursEl) hoursEl.innerText = formatTime(hours);
+                if (minutesEl) minutesEl.innerText = formatTime(minutes);
+                if (secondsEl) secondsEl.innerText = formatTime(seconds);
+
+            }, 1000); // Actualizar cada segundo
+
+            
+            // --- 2. LÓGICA DEL SONIDO DE CELEBRACIÓN (Tone.js) ---
+
+            function playCelebrationSound() {
+                // Asegurarse de que el contexto de audio se inicie (requerido por los navegadores)
+                Tone.start().then(() => {
+                    // Crear un sintetizador simple
+                    const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                    const now = Tone.now();
+                    
+                    // Una melodía corta y alegre
+                    synth.triggerAttackRelease(["C5", "E5", "G5"], "8n", now);
+                    synth.triggerAttackRelease(["E5", "G5", "C6"], "8n", now + 0.25);
+                    synth.triggerAttackRelease(["G5", "C6", "E6"], "4n", now + 0.5);
+                    synth.triggerAttackRelease(["C6", "E6", "G6"], "2n", now + 0.75);
+                }).catch(e => {
+                    console.error("Tone.js no pudo iniciarse:", e);
+                });
+            }
+
+            
+            // --- 3. LÓGICA DEL CONFETI (Canvas) ---
+
+            const confettiCanvas = document.getElementById('confetti-canvas');
+            const ctx = confettiCanvas.getContext('2d');
+            let confettiParticles = [];
+            const confettiColors = ['#E6007E', '#FFC0CB', '#FFFFFF', '#FCEEF5', '#FF69B4'];
+            let animationFrameId;
+
+            // Clase para una partícula de confeti
+            class ConfettiParticle {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                    this.radius = Math.random() * 5 + 2; // Tamaño
+                    this.color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+                    this.vx = Math.random() * 6 - 3; // Velocidad horizontal
+                    this.vy = Math.random() * -6 - 3; // Velocidad vertical (hacia arriba)
+                    this.alpha = 1;
+                    this.gravity = 0.1;
+                    this.drag = 0.98; // Fricción
+                }
+
+                update() {
+                    this.vy += this.gravity;
+                    this.vx *= this.drag;
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.alpha -= 0.005; // Desvanecerse lentamente
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.globalAlpha = this.alpha;
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+            
+            function startConfetti() {
+                if (!confettiCanvas) return;
+                confettiCanvas.style.display = 'block'; // Hacer visible el lienzo
+                
+                // Ajustar tamaño del lienzo a la ventana
+                confettiCanvas.width = window.innerWidth;
+                confettiCanvas.height = window.innerHeight;
+                
+                // Crear una ráfaga inicial de partículas
+                const burstX = confettiCanvas.width / 2;
+                const burstY = confettiCanvas.height / 2;
+                for (let i = 0; i < 200; i++) {
+                    confettiParticles.push(new ConfettiParticle(burstX, burstY));
+                }
+
+                // Iniciar el bucle de animación
+                animateConfetti();
+            }
+
+            function animateConfetti() {
+                // Solicitar el próximo fotograma de animación
+                animationFrameId = requestAnimationFrame(animateConfetti);
+
+                // Limpiar el lienzo con un fondo transparente (para el efecto de estela)
+                ctx.fillStyle = 'rgba(255, 192, 203, 0.05)'; // Tinte rosa muy sutil
+                ctx.fillRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+                
+                // Añadir nuevas partículas cayendo desde arriba
+                if (Math.random() > 0.9) {
+                    confettiParticles.push(new ConfettiParticle(Math.random() * confettiCanvas.width, -10));
+                }
+
+                // Actualizar y dibujar cada partícula
+                for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                    const p = confettiParticles[i];
+                    p.update();
+                    p.draw();
+                    
+                    // Eliminar partículas que están fuera de la pantalla o son invisibles
+                    if (p.alpha <= 0 || p.y > confettiCanvas.height) {
+                        confettiParticles.splice(i, 1);
+                    }
+                }
+            }
+            
+            // Opcional: Ajustar el lienzo si la ventana cambia de tamaño
+            window.addEventListener('resize', () => {
+                if (confettiCanvas.style.display === 'block') {
+                    confettiCanvas.width = window.innerWidth;
+                    confettiCanvas.height = window.innerHeight;
+                }
+            });
+
+        });
+    </script>
+
+</body>
+</html>
